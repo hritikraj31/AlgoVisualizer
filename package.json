@@ -1,0 +1,19 @@
+{
+	"name": "algovisualizer",
+	"version": "1.0.0",
+	"description": "For visualising different algorithms.",
+	"main": "server.js",
+	"scripts": {
+		"start": "nodemon server.js",
+		"watch": "watchify  assets\\js\\main.js -o assets\\js\\bundle.js"
+	},
+	"keywords": [
+		"\"Visualize\"",
+		"\"Algorithm\""
+	],
+	"author": "Hritik Raj",
+	"license": "ISC",
+	"dependencies": {
+		"express": "^4.17.1"
+	}
+}
