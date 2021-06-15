@@ -3,15 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Algorithm Visualizer</title>
     <link rel="stylesheet" href="stylesheets/main.css">
 </head>
 <body>
-    <div>
+    <nav style="position: fixed; top: 0;left: 0; right: 0;">
+        <div id="logo"></div>
+        <div >
+            <ul class='navItems'>
+                <li id = 'startAlgo_btn'>Run Algorithm</li>
+                <li id = 'clearPath_btn'>Clear Path</li>
+                <li class= 'dropdown' id = 'createMaze_btn'>
+                    <!-- <div class= "dropdown"> -->
+                        <button>Create Maze</button>
+                        <div class='dropdown-list'>
+                            <button class="dropdown-item" id = 'maze-1'>Maze 1</button>
+                            <button class="dropdown-item" id = 'maze-2'>Maze 2</button>
+                        </div>
+                    <!-- </div> -->
+                </li>
+            </ul>
+        </div>
+    </nav>
+    <!-- <div>
         <button id ='startAlgo_btn'>Run Algorithm</button>
         <button id ='clearPath_btn'>Clear Path</button>
         <button id ='createMaze_btn'>Create Maze</button>
-    </div>
+    </div> -->
     <div class="maingrid">
         <table>
             <tbody id ="grid">

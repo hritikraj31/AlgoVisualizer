@@ -3,7 +3,7 @@ const dijkstra = (start,end,board,nodes,gtype)=>{
         if(!start || !end || start ===end){
             return false;
         }
-        nodes[start].distance = 0;
+        nodes[start.id].distance = 0;
         let unvisitedNodes = Object.keys(nodes);
         while(unvisitedNodes.length){
             let closestNode = minDistanceNodes(nodes,unvisitedNodes);
@@ -11,10 +11,12 @@ const dijkstra = (start,end,board,nodes,gtype)=>{
                 closestNode = minDistanceNodes(nodes, unvisitedNodes);
             }
             if(closestNode.distance === Infinity){
+                board.algorithmDone = true;
                 return false;
             }
             board.nodesToAnimate.push(closestNode);
             if(closestNode.type==='end'){
+                board.algorithmDone = true;
                 break;
             }
             if(closestNode.type !== 'start')

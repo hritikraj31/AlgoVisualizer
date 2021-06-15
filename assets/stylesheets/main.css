@@ -1,19 +1,50 @@
 *{
     box-sizing: border-box;
 }
-
+body{
+  padding-top: 50px;
+}
 .maingrid{
-    margin: auto;
+    margin: 15px auto;
     /* height: 600px;
     width: 1000px; */
     background: #e6fccde6;
     padding: auto;
 }
-
-.start{
-  background-color: blue;
+.maingrid table{
+  border-spacing: 0;
+  border-collapse: collapse;
 }
-
+.start{
+  /* background-image: url("../images/start.png");
+  background-repeat: no-repeat;
+  background-position-x: 50%;
+  background-size:  200%;
+  background-clip: initial; */
+}
+.start::before{
+  content: "";
+  display: inline-block;
+  width: 300%;
+  height: 600%;
+  background-image: url("../images/start.png");
+  background-repeat: no-repeat;
+  position: relative;
+  left: -85%;
+  top: 65%;
+  animation: rocket;
+  animation-duration: 2s;
+  animation-iteration-count: infinite;
+  animation-direction: normal;
+  animation-timing-function: linear;
+}
+.start::after{
+  position: relative;
+  background-image: url("../images/start.png");
+  background-repeat: no-repeat;
+  background-position-x: 50%;
+  background-size:  200%;
+}
 .end{
   background-color: green;
 }
@@ -25,19 +56,85 @@ td{
     background: #07ed92c2;
     height: 25px;
     width: 25px;
-    border-radius: 7px;
 }
-
+.navItems{
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+  background-color: #333;
+  display: block;
+  overflow: hidden;
+  height: 42.4px;
+}
+ul.navItems li{
+  display: block;
+  float: right;
+  padding: 12px 12px;
+  color: white;
+  cursor: pointer;
+}
+.navItems li:hover{
+  background: #111;
+  color: white;
+  font-size: 1.1rem;
+}
+.dropdown{
+  margin: 0!important;
+  padding: 0!important;
+}
+.dropdown button{
+  border: none;
+  height: 100%;
+  width: 100%;
+  padding: 12px;
+  background-color: #333;
+  color: white;
+  font: inherit;
+  cursor: pointer;
+}
+.dropdown button:hover{
+  background-color: #111;
+  color: white;
+}
+.dropdown .dropdown-list{
+  display: none;
+  position: absolute;
+  top: 100%;
+  z-index: 2;
+}
+.dropdown:hover .dropdown-list{
+  display: block;
+}
 .wall{
-    background: rgb(1, 9, 80);
+  background: rgb(1, 9, 80);
+}
+.instant-wall{
+  background: rgb(1, 9, 80);
 }
 
+.unvisited{
+  background-color: white;
+  border: 1px solid rgb(15, 245, 210);
+  animation: unvisited-anim;
+  animation-duration: 0.2s;
+  animation-timing-function: cubic-bezier(0,0.5,0.7,1);
+  animation-iteration-count: 1;
+}
+.instant-unvisited{
+  background-color: white;
+  border: 1px solid rgb(15, 245, 210);
+}
 .visited{
     background-color: rgba(0, 190, 218, 0.75);
+    border: 1px solid rgb(15, 245, 210);
     animation: visitedanim;
     animation-duration: 1s;
     animation-timing-function: cubic-bezier(0,0.5,0.7,1);
     animation-iteration-count: 1;
+}
+.instant-visited{
+  background-color: rgba(0, 190, 218, 0.75);
+  border: 1px solid rgb(15, 245, 210);
 }
 
 .path{
@@ -46,12 +143,15 @@ td{
   animation-duration: 2s;
   animation-iteration-count: 1;
 }
+.instant-path{
+  background-color: yellow;
+}
 
 @keyframes pathanimation {
   0% {
     transform: scale(0.5);
     border-radius: 100%;
-    background-color: greenyellow;
+    background-color: #11998e
   }
   50% {
     background-color: orange;
@@ -82,4 +182,47 @@ td{
       transform: scale(1.0);
       background-color: rgba(0, 190, 218, 0.75);
     }
+}
+
+@keyframes unvisited-anim {
+  0% {
+    transform: scale(0.3);
+    background-color: #333;
+    border: none;
+  }
+  50% {
+    transform: scale(1.2);
+    background-color: white;
+  }
+  100%{
+    transform: scale(1.0);
+    background-color: white;
+  }
+}
+
+@keyframes rocket {
+  0%{
+    transform: scale(0.5) rotate(0deg);
+  }
+  5%{
+    transform: scale(0.7) rotate(5deg);
+  }
+  10%{
+    transform: scale(0.7) rotate(-5deg);
+  }
+  15%{
+    transform: scale(0.5) rotate(0deg);
+  }
+  20%{
+    transform: scale(0.7) rotate(5deg);
+  }
+  25%{
+    transform: scale(0.7) rotate(-5deg);
+  }
+  30%{
+    transform: scale(0.5) rotate(0deg);
+  }
+  100%{
+    transform: scale(0.5) rotate(0deg);
+  }
 }

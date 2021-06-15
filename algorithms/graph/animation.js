@@ -4,11 +4,13 @@ const startAnimation = (board)=>{
         setTimeout(()=>{
             if(index===nodes.length){
                 board.nodesToAnimate =[];
-                animateShortestPath(board);
+                if(board.shortestPath)
+                    animateShortestPath(board);
+                else board.busy = false;
             }else{
                 let current =document.getElementById(nodes[index].id);
                 if(current.className !== 'start' && current.className !== 'end')
-                    current.className = 'visited';
+                    current.className = nodes[index].type;
                 timeout(index+1);
             }
         },10);
@@ -23,6 +25,7 @@ function animateShortestPath(board){
             if(index ===shortestPath.length){
                 board.busy = false;
                 shortestPath =[];
+                board.shortestPath = [];
             }else{
                 let current = document.getElementById(shortestPath[index].id);
                 if(current.className !== 'start' && current.className !== 'end')
@@ -34,4 +37,21 @@ function animateShortestPath(board){
     timeout(0);
 }
 
-module.exports = startAnimation;
+const instantAnimate = (board)=>{
+    let nodes = board.nodesToAnimate;
+    nodes.forEach((node)=>{
+        if(node.type === 'start' || node.type === 'end'){
+            document.getElementById(node.id).className = node.type;
+        }else{
+            document.getElementById(node.id).className = `instant-${node.type}`;
+        }
+    });
+    board.shortestPath.forEach((node) =>{
+        if(node.type !== 'start' && node.type !== 'end'){
+            document.getElementById(node.id).className = `instant-path`;
+        }
+    });
+    board.nodesToAnimate = [];
+    board.shortestPath = [];
+};
+module.exports = {startAnimation, instantAnimate};
