@@ -1,26 +1,41 @@
 const Node = require("./node");
-const dijkstra = require('./dijkstra');
+const dijkstra = require('./grid_graph_algo/dijkstra');
 const {startAnimation, instantAnimate} = require('./animation.js');
+const aStar = require('./grid_graph_algo/a_star');
 
+/**
+ * Board 
+ * 
+ * Useful Definitions
+ * busy -> Animation and Algorithm is not complete
+ * mouseDown -> some cell is selected and mouse is down
+ * previousNode -> To keep track of the last clicked node (when changing special nodes)
+ * lastAlgo -> Last Algorithm Function
+ * @param {number} height 
+ * @param {number} width 
+ */
 function Board(height, width){
     this.height = height;
     this.width = width;
-    this.grid = []; // array of Node(s)
-    this.nodes = {}; // "id" -> Node
-    this.busy = false; // In between algorithm and animation
-    this.start = null; // Start Node
-    this.end = null;  // End Node
-    this.pressedNodetype = null; // Type of Pressed Node
-    this.previousNode = null;  // Previous Node
-    this.mouseDown = false; // Some cell selected and mouse down
-    this.nodesToAnimate = []; // Nodes for animation
-    this.shortestPath = []; // Nodes in Shortest Path
+    this.grid = [];
+    this.nodes = {};
+    this.busy = false;
+    this.start = null;
+    this.end = null;
+    this.pressedNodetype = null;
+    this.previousNode = null;
+    this.mouseDown = false;
+    this.nodesToAnimate = [];
+    this.shortestPath = [];
     this.algorithmDone = false;
     this.specialTypes = ['start', 'end'];
+    this.lastAlgo = null;
+    this.speed = 10;
 }
 
-// Creates Grid using HTML Tables and every table cell is given id according to its row and column
-// Initially assigned class is unvisited
+/**
+ * It creates Grid using HTML Tables and assigns each cell id {row-column}
+ */
 Board.prototype.createGrid= function (){
     let girdHtml = "";
     for(let r=0;r<this.height;r++){
@@ -40,7 +55,7 @@ Board.prototype.createGrid= function (){
     document.getElementById('grid').innerHTML = girdHtml;
 }
 
-// Mouse Events are added to each of the grid cells
+/* Mouse Event and button event listeners are added using this function */
 Board.prototype.addEventListeners = function(){
     for(let r=0;r<this.height;r++){
         for(let c=0;c<this.width;c++){
@@ -95,19 +110,36 @@ Board.prototype.addEventListeners = function(){
 
         }
     }
-    document.getElementById('startAlgo_btn').onclick = ()=>{
+    document.getElementById('dijkstra').onclick = ()=>{
         if(this.busy) return;
-        this.run();
+        this.run(dijkstra);
+    }
+    document.getElementById('aStar').onclick = ()=>{
+        if(this.busy) return;
+        this.run(aStar);
     }
     document.getElementById('clearPath_btn').onclick = ()=>{
         if(this.busy) return;
         this.clearPath();
+    }
+    document.getElementById('clearBoard_btn').onclick = ()=>{
+        if(this.busy) return;
+        this.clearBoard();
     }
     document.getElementById('maze-1').onclick = ()=>{
         this.createMaze(this.recursiveDivisionMaze);
     }
     document.getElementById('maze-2').onclick = ()=>{
         this.createMaze(this.createPrimsMaze);
+    }
+    document.getElementById('sp-fast').onclick = ()=>{
+        this.speed = 10;
+    }
+    document.getElementById('sp-med').onclick = ()=>{
+        this.speed = 20;
+    }
+    document.getElementById('sp-slow').onclick = ()=>{
+        this.speed = 30;
     }
 }
 Board.prototype.setStart = function (node){
@@ -134,6 +166,11 @@ Board.prototype.setEnd = function (node){
     this.end =node;
     document.getElementById(node.id).className = 'end';
 }
+
+/**
+ * This function toggles the current node's type between 'wall' and 'unvisited'
+ * @param {Node} currentNode 
+ */
 Board.prototype.changeNormalNode = function (currentNode){
     let nodeHtml= document.getElementById(currentNode.id);
     if(this.mouseDown && (currentNode.type !== 'start' && currentNode.type !== 'end')){
@@ -143,6 +180,11 @@ Board.prototype.changeNormalNode = function (currentNode){
     }
 }
 
+/**
+ * This function is used to move special nodes
+ * @param {Node} currentNode 
+ * @returns {undefined}
+ */
 Board.prototype.changeSpecialNode =function(currentNode){
     if(this.previousNode && this.previousNode.id !== currentNode.id){
         let nodeHtml = document.getElementById(currentNode.id);
@@ -164,7 +206,7 @@ Board.prototype.changeSpecialNode =function(currentNode){
             return;
         }
         this.clearPath();
-        dijkstra(this.start, this.end, this, this.nodes, 'grid');
+        this.lastAlgo(this);
         this.formShortestPath();
         instantAnimate(this);
     }
@@ -186,12 +228,22 @@ function randomInRange(a, b){
     return Math.floor(Math.random()*(Math.abs(a-b)+1)+ Math.min(a, b));
 }
 
+/**
+ * This function recursively forms the maze. Here the parameters signifies the bounding box of the current grid part.
+ * This function assumes that all odd numbered indexes are walls and even ones are normal grid cells.
+ * @param {number} col1 Frame Starting Column Index
+ * @param {number} col2 Frame Ending Column 
+ * @param {number} row1 Frame Starting Row Number
+ * @param {number} row2 Franme Ending Row Number
+ * @returns {undefined}
+ */
 Board.prototype.recursiveDivisionMaze = function (col1, col2, row1, row2){
     let relevantClassNames = ["start", "end"];
     if(Math.abs(row1-row2) < 4 || Math.abs(col2-col1)< 4){
         return;
     }
     if(Math.abs(col2-this.width+1)<1e-9 && Math.abs(row2-this.height+1)< 1e-9 && Math.abs(col1+row1)<1e-9){
+        // Forming The Boundary..
         for(let r =0;r <= row2;r++){
             let node  = this.nodes[`${r}-${col2}`];
             let currentHTMLNode = document.getElementById(node.id);
@@ -261,51 +313,7 @@ Board.prototype.recursiveDivisionMaze = function (col1, col2, row1, row2){
         this.recursiveDivisionMaze(col1, col2, c1, row2);
     }
 }
-// Board.prototype.recursiveDivisionMaze = function (col1, col2, row1, row2){
-//     if(Math.abs(col1-col2) < 2 || Math.abs(row1 - row2) < 2){
-//         return;
-//     }
-//     let r1 = randomInRange(row1, row2);
-//     let r2 = randomInRange(row1+1, row2-1);
-//     let c1 = randomInRange(col1, col2);
-//     let c2 = randomInRange(col1+1, col2-1);
-//     for(let c = col1 ;c < col2+1;c++){
-//         if(c== c1){
-//             if(Math.abs(col2-c)+1 > 6){
-//                 c1 = randomInRange(c1+1, col2 );
-//             }
-//             continue;
-//         }
-//         let node = this.nodes[`${r2}-${c}`]
-//         let currentHTMLNode = document.getElementById(node.id);
-//         let relevantClassNames = ["start","end"];
-//         if(!relevantClassNames.includes(currentHTMLNode.className)){
-//             // currentHTMLNode.className = 'wall';
-//             this.nodes[node.id].type = 'wall';
-//             this.nodesToAnimate.push(node);
-//         }
-//     }
-//     for(let r = row1 ;r < row2+1;r++){
-//         if(r== r1){
-//             if(Math.abs(row2-r)+1 > 6){
-//                 r1 = randomInRange(r1+1, row2 );
-//             }
-//             continue;
-//         }
-//         let node = this.nodes[`${r}-${c2}`]
-//         let currentHTMLNode = document.getElementById(node.id);
-//         let relevantClassNames = ["start","end"];
-//         if(!relevantClassNames.includes(currentHTMLNode.className)){
-//             // currentHTMLNode.className = 'wall';
-//             this.nodesToAnimate.push(node);
-//             this.nodes[node.id].type = 'wall';
-//         }
-//     }
-//     this.recursiveDivisionMaze(col1, c2-1, row1,r2-1 );
-//     this.recursiveDivisionMaze(c2+1, col2, row1,r2-1 );
-//     this.recursiveDivisionMaze(col1, c2-1, r2+1, row2 );
-//     this.recursiveDivisionMaze(c2+1, col2, r2+1, row2 );
-// }
+
 
 Board.prototype.createPrimsMaze = function (){
     Object.keys(this.nodes).forEach((nodeId)=>{
@@ -343,61 +351,10 @@ Board.prototype.createPrimsMaze = function (){
         inMaze.push(nextNode);
         nextPossible.splice(nextIndex, 1);
         nextPossible.push(...this.getNeighbours(nextNode,2).filter((node)=> nextPossible.indexOf(node)=== -1 && inMaze.indexOf(node)===-1 && !this.specialTypes.includes(node.type)));
-        // nextPossible = nextPossible.filter((node)=>{
-        //     // console.log(node, this.getNeighbours(node).filter((node)=> {return node in inMaze}));
-        //     return this.getNeighbours(node).filter((node)=> {return inMaze.indexOf(node) !== -1}).length <= 1 && inMaze.indexOf(node)=== -1;
-        // });
     }
 }
 
-Board.prototype.createMazeRecursiveDiv = function (col1,col2,row1, row2,it){
-    if(it==1){
-        this.clearWalls();
-    }
-    let random = Math.random()*(Math.abs(col1-col2+1))+col1;
-    random = Math.floor(random);
-    let random2 = Math.random()*Math.abs(row1-row2+1)+row1;
-    random2 = Math.floor(random2);
-    if(Math.abs(col1-col2)>Math.abs(row2-row1)){
-        if(col2-col1<=4){
-            return;
-        }
-        // random = Math.floor((col1+col2)/2);
-        for(let i=row1+1;i<row2;i++){
-            if(random2==i){
-                continue;
-            }
-            let node = this.grid[i][random];
-            let currentHTMLNode = document.getElementById(node.id);
-            let relevantClassNames = ["start","end"];
-            if(!relevantClassNames.includes(currentHTMLNode.className)){
-                currentHTMLNode.className = 'wall';
-                this.nodes[node.id].type = 'wall';
-            }
-        }
-        this.createMazeRecursiveDiv(col1, random-1,row1,row2, it+1);
-        this.createMazeRecursiveDiv(random+1, col2,row1,row2, it+1);
-    }else {
-        if(row2-row1<=4){
-            return;
-        }
-        // random2 = Math.floor((row1+row2)/2);
-        for(let i=col1+1;i<col2;i++){
-            if(random ==i){
-                continue;
-            }
-            let node = this.grid[random2][i];
-            let currentHTMLNode = document.getElementById(node.id);
-            let relevantClassNames = ["start","end"];
-            if(!relevantClassNames.includes(currentHTMLNode.className)){
-                currentHTMLNode.className = 'wall';
-                this.nodes[node.id].type = 'wall';
-            }
-        }
-        this.createMazeRecursiveDiv(col1, col2,row1,random2-1, it+1);
-        this.createMazeRecursiveDiv(col1, col2,random2+1,row2, it+1);
-    }
-}
+
 
 Board.prototype.getNeighbours = function(node, stride = 1){
     let neighbours = [];
@@ -415,6 +372,12 @@ Board.prototype.getNeighbours = function(node, stride = 1){
     return neighbours;
 }
 
+Board.prototype.clearBoard = function(){
+    this.clearPath();
+    this.clearWalls();
+    this.setStart('10-18');
+    this.setEnd('10-35');
+}
 Board.prototype.clearPath = function(){
     this.algorithmDone = false;
     let nodes = Object.keys(this.nodes);
@@ -440,11 +403,12 @@ Board.prototype.clearWalls = function () {
     });
 }
 
-Board.prototype.run = function(){
+Board.prototype.run = function(algo){
     if(!this.busy){
         this.clearPath();
         this.busy = true;
-        dijkstra(this.start,this.end,this,this.nodes,'grid');
+        this.lastAlgo = algo;
+        algo(this);
         this.formShortestPath();
         startAnimation(this);
     }

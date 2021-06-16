@@ -1,28 +1,38 @@
-const dijkstra = (start,end,board,nodes,gtype)=>{
-    if(gtype=='grid'){
-        if(!start || !end || start ===end){
-            return false;
+/**
+ * Dijkstra Algorithm
+ * This function runs Dijkstra on a grid to give shortest path from start to end.
+ * In this greedy approach element with the least cost is picked for exploring the next node.
+ * 
+ * Reference : https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
+ * 
+ * NOTE: As the grid is very small I have not written the most optimized form of it. (Time : O(n^2))
+ * 
+ * @param {Board} board 
+ */
+const dijkstra = (board)=>{
+    let {start, end, nodes} = board;
+    if(!start || !end || start ===end){
+        return false;
+    }
+    nodes[start.id].distance = 0;
+    let unvisitedNodes = Object.keys(nodes);
+    while(unvisitedNodes.length){
+        let closestNode = minDistanceNodes(nodes,unvisitedNodes);
+        while(closestNode.type=='wall' && unvisitedNodes.length){
+            closestNode = minDistanceNodes(nodes, unvisitedNodes);
         }
-        nodes[start.id].distance = 0;
-        let unvisitedNodes = Object.keys(nodes);
-        while(unvisitedNodes.length){
-            let closestNode = minDistanceNodes(nodes,unvisitedNodes);
-            while(closestNode.type=='wall' && unvisitedNodes.length){
-                closestNode = minDistanceNodes(nodes, unvisitedNodes);
-            }
-            if(closestNode.distance === Infinity){
-                board.algorithmDone = true;
-                return false;
-            }
-            board.nodesToAnimate.push(closestNode);
-            if(closestNode.type==='end'){
-                board.algorithmDone = true;
-                break;
-            }
-            if(closestNode.type !== 'start')
-                closestNode.type = 'visited';
-            update(nodes,closestNode);
+        if(closestNode.distance === Infinity){
+            board.algorithmDone = true;
+            return;
         }
+        board.nodesToAnimate.push(closestNode);
+        if(closestNode.type==='end'){
+            board.algorithmDone = true;
+            break;
+        }
+        if(closestNode.type !== 'start')
+            closestNode.type = 'visited';
+        update(nodes,closestNode);
     }
 }
 function minDistanceNodes(nodes, unvisitedNodes){

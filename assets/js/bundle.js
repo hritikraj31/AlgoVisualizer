@@ -1,6 +1,7 @@
 (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
 const startAnimation = (board)=>{
     let nodes = board.nodesToAnimate;
+    let speed = board.speed;
     function timeout(index){
         setTimeout(()=>{
             if(index===nodes.length){
@@ -14,7 +15,7 @@ const startAnimation = (board)=>{
                     current.className = nodes[index].type;
                 timeout(index+1);
             }
-        },10);
+        },speed);
     }
     timeout(0);
 }
@@ -58,28 +59,43 @@ const instantAnimate = (board)=>{
 module.exports = {startAnimation, instantAnimate};
 },{}],2:[function(require,module,exports){
 const Node = require("./node");
-const dijkstra = require('./dijkstra');
+const dijkstra = require('./grid_graph_algo/dijkstra');
 const {startAnimation, instantAnimate} = require('./animation.js');
+const aStar = require('./grid_graph_algo/a_star');
 
+/**
+ * Board 
+ * 
+ * Useful Definitions
+ * busy -> Animation and Algorithm is not complete
+ * mouseDown -> some cell is selected and mouse is down
+ * previousNode -> To keep track of the last clicked node (when changing special nodes)
+ * lastAlgo -> Last Algorithm Function
+ * @param {number} height 
+ * @param {number} width 
+ */
 function Board(height, width){
     this.height = height;
     this.width = width;
-    this.grid = []; // array of Node(s)
-    this.nodes = {}; // "id" -> Node
-    this.busy = false; // In between algorithm and animation
-    this.start = null; // Start Node
-    this.end = null;  // End Node
-    this.pressedNodetype = null; // Type of Pressed Node
-    this.previousNode = null;  // Previous Node
-    this.mouseDown = false; // Some cell selected and mouse down
-    this.nodesToAnimate = []; // Nodes for animation
-    this.shortestPath = []; // Nodes in Shortest Path
+    this.grid = [];
+    this.nodes = {};
+    this.busy = false;
+    this.start = null;
+    this.end = null;
+    this.pressedNodetype = null;
+    this.previousNode = null;
+    this.mouseDown = false;
+    this.nodesToAnimate = [];
+    this.shortestPath = [];
     this.algorithmDone = false;
     this.specialTypes = ['start', 'end'];
+    this.lastAlgo = null;
+    this.speed = 10;
 }
 
-// Creates Grid using HTML Tables and every table cell is given id according to its row and column
-// Initially assigned class is unvisited
+/**
+ * It creates Grid using HTML Tables and assigns each cell id {row-column}
+ */
 Board.prototype.createGrid= function (){
     let girdHtml = "";
     for(let r=0;r<this.height;r++){
@@ -99,7 +115,7 @@ Board.prototype.createGrid= function (){
     document.getElementById('grid').innerHTML = girdHtml;
 }
 
-// Mouse Events are added to each of the grid cells
+/* Mouse Event and button event listeners are added using this function */
 Board.prototype.addEventListeners = function(){
     for(let r=0;r<this.height;r++){
         for(let c=0;c<this.width;c++){
@@ -154,19 +170,36 @@ Board.prototype.addEventListeners = function(){
 
         }
     }
-    document.getElementById('startAlgo_btn').onclick = ()=>{
+    document.getElementById('dijkstra').onclick = ()=>{
         if(this.busy) return;
-        this.run();
+        this.run(dijkstra);
+    }
+    document.getElementById('aStar').onclick = ()=>{
+        if(this.busy) return;
+        this.run(aStar);
     }
     document.getElementById('clearPath_btn').onclick = ()=>{
         if(this.busy) return;
         this.clearPath();
+    }
+    document.getElementById('clearBoard_btn').onclick = ()=>{
+        if(this.busy) return;
+        this.clearBoard();
     }
     document.getElementById('maze-1').onclick = ()=>{
         this.createMaze(this.recursiveDivisionMaze);
     }
     document.getElementById('maze-2').onclick = ()=>{
         this.createMaze(this.createPrimsMaze);
+    }
+    document.getElementById('sp-fast').onclick = ()=>{
+        this.speed = 10;
+    }
+    document.getElementById('sp-med').onclick = ()=>{
+        this.speed = 20;
+    }
+    document.getElementById('sp-slow').onclick = ()=>{
+        this.speed = 30;
     }
 }
 Board.prototype.setStart = function (node){
@@ -193,6 +226,11 @@ Board.prototype.setEnd = function (node){
     this.end =node;
     document.getElementById(node.id).className = 'end';
 }
+
+/**
+ * This function toggles the current node's type between 'wall' and 'unvisited'
+ * @param {Node} currentNode 
+ */
 Board.prototype.changeNormalNode = function (currentNode){
     let nodeHtml= document.getElementById(currentNode.id);
     if(this.mouseDown && (currentNode.type !== 'start' && currentNode.type !== 'end')){
@@ -202,6 +240,11 @@ Board.prototype.changeNormalNode = function (currentNode){
     }
 }
 
+/**
+ * This function is used to move special nodes
+ * @param {Node} currentNode 
+ * @returns {undefined}
+ */
 Board.prototype.changeSpecialNode =function(currentNode){
     if(this.previousNode && this.previousNode.id !== currentNode.id){
         let nodeHtml = document.getElementById(currentNode.id);
@@ -223,7 +266,7 @@ Board.prototype.changeSpecialNode =function(currentNode){
             return;
         }
         this.clearPath();
-        dijkstra(this.start, this.end, this, this.nodes, 'grid');
+        this.lastAlgo(this);
         this.formShortestPath();
         instantAnimate(this);
     }
@@ -245,12 +288,22 @@ function randomInRange(a, b){
     return Math.floor(Math.random()*(Math.abs(a-b)+1)+ Math.min(a, b));
 }
 
+/**
+ * This function recursively forms the maze. Here the parameters signifies the bounding box of the current grid part.
+ * This function assumes that all odd numbered indexes are walls and even ones are normal grid cells.
+ * @param {number} col1 Frame Starting Column Index
+ * @param {number} col2 Frame Ending Column 
+ * @param {number} row1 Frame Starting Row Number
+ * @param {number} row2 Franme Ending Row Number
+ * @returns {undefined}
+ */
 Board.prototype.recursiveDivisionMaze = function (col1, col2, row1, row2){
     let relevantClassNames = ["start", "end"];
     if(Math.abs(row1-row2) < 4 || Math.abs(col2-col1)< 4){
         return;
     }
     if(Math.abs(col2-this.width+1)<1e-9 && Math.abs(row2-this.height+1)< 1e-9 && Math.abs(col1+row1)<1e-9){
+        // Forming The Boundary..
         for(let r =0;r <= row2;r++){
             let node  = this.nodes[`${r}-${col2}`];
             let currentHTMLNode = document.getElementById(node.id);
@@ -320,51 +373,7 @@ Board.prototype.recursiveDivisionMaze = function (col1, col2, row1, row2){
         this.recursiveDivisionMaze(col1, col2, c1, row2);
     }
 }
-// Board.prototype.recursiveDivisionMaze = function (col1, col2, row1, row2){
-//     if(Math.abs(col1-col2) < 2 || Math.abs(row1 - row2) < 2){
-//         return;
-//     }
-//     let r1 = randomInRange(row1, row2);
-//     let r2 = randomInRange(row1+1, row2-1);
-//     let c1 = randomInRange(col1, col2);
-//     let c2 = randomInRange(col1+1, col2-1);
-//     for(let c = col1 ;c < col2+1;c++){
-//         if(c== c1){
-//             if(Math.abs(col2-c)+1 > 6){
-//                 c1 = randomInRange(c1+1, col2 );
-//             }
-//             continue;
-//         }
-//         let node = this.nodes[`${r2}-${c}`]
-//         let currentHTMLNode = document.getElementById(node.id);
-//         let relevantClassNames = ["start","end"];
-//         if(!relevantClassNames.includes(currentHTMLNode.className)){
-//             // currentHTMLNode.className = 'wall';
-//             this.nodes[node.id].type = 'wall';
-//             this.nodesToAnimate.push(node);
-//         }
-//     }
-//     for(let r = row1 ;r < row2+1;r++){
-//         if(r== r1){
-//             if(Math.abs(row2-r)+1 > 6){
-//                 r1 = randomInRange(r1+1, row2 );
-//             }
-//             continue;
-//         }
-//         let node = this.nodes[`${r}-${c2}`]
-//         let currentHTMLNode = document.getElementById(node.id);
-//         let relevantClassNames = ["start","end"];
-//         if(!relevantClassNames.includes(currentHTMLNode.className)){
-//             // currentHTMLNode.className = 'wall';
-//             this.nodesToAnimate.push(node);
-//             this.nodes[node.id].type = 'wall';
-//         }
-//     }
-//     this.recursiveDivisionMaze(col1, c2-1, row1,r2-1 );
-//     this.recursiveDivisionMaze(c2+1, col2, row1,r2-1 );
-//     this.recursiveDivisionMaze(col1, c2-1, r2+1, row2 );
-//     this.recursiveDivisionMaze(c2+1, col2, r2+1, row2 );
-// }
+
 
 Board.prototype.createPrimsMaze = function (){
     Object.keys(this.nodes).forEach((nodeId)=>{
@@ -402,61 +411,10 @@ Board.prototype.createPrimsMaze = function (){
         inMaze.push(nextNode);
         nextPossible.splice(nextIndex, 1);
         nextPossible.push(...this.getNeighbours(nextNode,2).filter((node)=> nextPossible.indexOf(node)=== -1 && inMaze.indexOf(node)===-1 && !this.specialTypes.includes(node.type)));
-        // nextPossible = nextPossible.filter((node)=>{
-        //     // console.log(node, this.getNeighbours(node).filter((node)=> {return node in inMaze}));
-        //     return this.getNeighbours(node).filter((node)=> {return inMaze.indexOf(node) !== -1}).length <= 1 && inMaze.indexOf(node)=== -1;
-        // });
     }
 }
 
-Board.prototype.createMazeRecursiveDiv = function (col1,col2,row1, row2,it){
-    if(it==1){
-        this.clearWalls();
-    }
-    let random = Math.random()*(Math.abs(col1-col2+1))+col1;
-    random = Math.floor(random);
-    let random2 = Math.random()*Math.abs(row1-row2+1)+row1;
-    random2 = Math.floor(random2);
-    if(Math.abs(col1-col2)>Math.abs(row2-row1)){
-        if(col2-col1<=4){
-            return;
-        }
-        // random = Math.floor((col1+col2)/2);
-        for(let i=row1+1;i<row2;i++){
-            if(random2==i){
-                continue;
-            }
-            let node = this.grid[i][random];
-            let currentHTMLNode = document.getElementById(node.id);
-            let relevantClassNames = ["start","end"];
-            if(!relevantClassNames.includes(currentHTMLNode.className)){
-                currentHTMLNode.className = 'wall';
-                this.nodes[node.id].type = 'wall';
-            }
-        }
-        this.createMazeRecursiveDiv(col1, random-1,row1,row2, it+1);
-        this.createMazeRecursiveDiv(random+1, col2,row1,row2, it+1);
-    }else {
-        if(row2-row1<=4){
-            return;
-        }
-        // random2 = Math.floor((row1+row2)/2);
-        for(let i=col1+1;i<col2;i++){
-            if(random ==i){
-                continue;
-            }
-            let node = this.grid[random2][i];
-            let currentHTMLNode = document.getElementById(node.id);
-            let relevantClassNames = ["start","end"];
-            if(!relevantClassNames.includes(currentHTMLNode.className)){
-                currentHTMLNode.className = 'wall';
-                this.nodes[node.id].type = 'wall';
-            }
-        }
-        this.createMazeRecursiveDiv(col1, col2,row1,random2-1, it+1);
-        this.createMazeRecursiveDiv(col1, col2,random2+1,row2, it+1);
-    }
-}
+
 
 Board.prototype.getNeighbours = function(node, stride = 1){
     let neighbours = [];
@@ -474,6 +432,12 @@ Board.prototype.getNeighbours = function(node, stride = 1){
     return neighbours;
 }
 
+Board.prototype.clearBoard = function(){
+    this.clearPath();
+    this.clearWalls();
+    this.setStart('10-18');
+    this.setEnd('10-35');
+}
 Board.prototype.clearPath = function(){
     this.algorithmDone = false;
     let nodes = Object.keys(this.nodes);
@@ -499,11 +463,12 @@ Board.prototype.clearWalls = function () {
     });
 }
 
-Board.prototype.run = function(){
+Board.prototype.run = function(algo){
     if(!this.busy){
         this.clearPath();
         this.busy = true;
-        dijkstra(this.start,this.end,this,this.nodes,'grid');
+        this.lastAlgo = algo;
+        algo(this);
         this.formShortestPath();
         startAnimation(this);
     }
@@ -529,32 +494,137 @@ Board.prototype.formShortestPath = function(){
         this.shortestPath.reverse();
 }
 module.exports = Board;
-},{"./animation.js":1,"./dijkstra":3,"./node":4}],3:[function(require,module,exports){
-const dijkstra = (start,end,board,nodes,gtype)=>{
-    if(gtype=='grid'){
-        if(!start || !end || start ===end){
-            return false;
+},{"./animation.js":1,"./grid_graph_algo/a_star":3,"./grid_graph_algo/dijkstra":4,"./node":5}],3:[function(require,module,exports){
+const Heap = require('../../utils/heap');
+
+/**
+ * A* Algorithm
+ * The function runs A* Algorithm to get the shortest path from start to end.
+ * gScore {Map} stores the actual cost of the path (Here for grid weight is assumed to be 1 for all edges)
+ * Manhattan Distance has been taken for calculating heuristic cost
+ * fScore {Map} stores the combination of the gScore and heuristic cost
+ * 
+ * Reference : https://en.wikipedia.org/wiki/A*_search_algorithm
+ * 
+ * NOTE: This Algorithm performs very well if nice heuristic function is present and always explores lesser number of nodes as compared to Dijkstra.
+ *       Further Custom Min-Heap has been used which allowed log n removal and addition of nodes and O(1) retrieval of Minimum Distance Node. 
+ * 
+ * @param {Board} board Board Object on which A* has to be done 
+ */
+function aStar(board){
+    let {nodes, start, end} = board;
+    let gScore = new Map();
+    let fscore = new Map();
+    gScore[2] =3;
+    Object.keys(nodes).forEach((nodeId)=> (gScore[nodeId] = Infinity, fscore[nodeId]= Infinity));
+
+    gScore[start.id] = 0;
+    fscore[start.id] = manahattanDistance(start.id, end.id);
+    function comperator(node1, node2){
+        return fscore[node1.id] > fscore[node2.id];
+    }
+    let openSet = new Heap([], comperator);
+    openSet.push(start);
+    let current;
+    let marked = new Map();
+    while(!openSet.empty()){
+        current = openSet.top();
+        if(current === end){
+            board.algorithmDone = true;
+            break;
         }
-        nodes[start.id].distance = 0;
-        let unvisitedNodes = Object.keys(nodes);
-        while(unvisitedNodes.length){
-            let closestNode = minDistanceNodes(nodes,unvisitedNodes);
-            while(closestNode.type=='wall' && unvisitedNodes.length){
-                closestNode = minDistanceNodes(nodes, unvisitedNodes);
-            }
-            if(closestNode.distance === Infinity){
-                board.algorithmDone = true;
-                return false;
-            }
-            board.nodesToAnimate.push(closestNode);
-            if(closestNode.type==='end'){
-                board.algorithmDone = true;
-                break;
-            }
-            if(closestNode.type !== 'start')
-                closestNode.type = 'visited';
-            update(nodes,closestNode);
+        board.nodesToAnimate.push(current);
+        if(current.type !== 'start'){
+            current.type = 'visited';
         }
+        openSet.pop();
+        let neighbours = getNeighbours(current, nodes);
+        neighbours = neighbours.filter((node)=>!marked[node.id] && (node.type !== 'wall'));
+        neighbours.forEach((node)=>{
+            let tentativeScore = gScore[current.id] + 1;
+            if(tentativeScore < gScore[node.id]){
+                node.previousNode = current;
+                gScore[node.id] = tentativeScore;
+                fscore[node.id] = gScore[node.id] + manahattanDistance(node.id, end.id);
+                openSet.push(node);
+                marked[node.id] = true;
+            }
+        });
+    }
+    board.algorithmDone = true;
+}
+
+/**
+ * Return Manhattan Distnace
+ * @param {Node} node1 
+ * @param {Node} node2 
+ * @returns {number}
+ */
+function manahattanDistance(node1, node2){
+    let [r1, c1] = node1.split('-').map((x)=>parseInt(x));
+    let [r2, c2] = node2.split('-').map((x)=>parseInt(x));
+    return Math.abs(r1-r2)+ Math.abs(c1-c2);
+}
+
+/**
+ * Return the neighbours in the grid
+ * @param {Node} node Node Element whose neighbours are required
+ * @param {Array of Node} nodes Array of nodes
+ * @returns {Array} neighbours
+ */
+function getNeighbours(node ,nodes){
+    let neighbours = [];
+    let [row,col] = node.id.split('-').map(x => parseInt(x));
+    for(let i=0;i<2;i++){
+        for(let j=0;j<2;j++){
+            let nrow = row +(i-j);
+            let ncol = col + (j+i-1);
+            let neighbour = nodes[`${nrow}-${ncol}`];
+            if(neighbour && neighbour.type !== 'wall'){
+                neighbours.push(neighbour);
+            }
+        }
+    }
+    return neighbours;
+}
+
+module.exports = aStar;
+},{"../../utils/heap":6}],4:[function(require,module,exports){
+/**
+ * Dijkstra Algorithm
+ * This function runs Dijkstra on a grid to give shortest path from start to end.
+ * In this greedy approach element with the least cost is picked for exploring the next node.
+ * 
+ * Reference : https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
+ * 
+ * NOTE: As the grid is very small I have not written the most optimized form of it. (Time : O(n^2))
+ * 
+ * @param {Board} board 
+ */
+const dijkstra = (board)=>{
+    let {start, end, nodes} = board;
+    if(!start || !end || start ===end){
+        return false;
+    }
+    nodes[start.id].distance = 0;
+    let unvisitedNodes = Object.keys(nodes);
+    while(unvisitedNodes.length){
+        let closestNode = minDistanceNodes(nodes,unvisitedNodes);
+        while(closestNode.type=='wall' && unvisitedNodes.length){
+            closestNode = minDistanceNodes(nodes, unvisitedNodes);
+        }
+        if(closestNode.distance === Infinity){
+            board.algorithmDone = true;
+            return;
+        }
+        board.nodesToAnimate.push(closestNode);
+        if(closestNode.type==='end'){
+            board.algorithmDone = true;
+            break;
+        }
+        if(closestNode.type !== 'start')
+            closestNode.type = 'visited';
+        update(nodes,closestNode);
     }
 }
 function minDistanceNodes(nodes, unvisitedNodes){
@@ -604,17 +674,146 @@ function calcDistance(node1, node2){
 }
 
 module.exports = dijkstra;
-},{}],4:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
+/**
+ * 
+ * @param {string} id 
+ * @param {string} type type of the node {wall, unvisited, visited}
+ */
 function Node(id,type = 'unvisited'){
     this.id = id;
-    this.previousNode = null;
+    this.previousNode = null;  // For path reconstruction
     this.distance = Infinity;
     this.type = type;
     this.lastNodeType = 'unvisited';
 }
 
 module.exports = Node;
-},{}],5:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
+/**
+ * Binary Heap Data Structure
+ * @param {Array} array 
+ * @param {function} comperator Function to choose check if first argument is of higher priority than second argument.
+ */
+function Heap(array, comperator ){
+    this.heap = [];
+    if(array && array instanceof Array){
+        this.heap = array;
+    }
+    this.size = this.heap.length;
+    if(typeof comperator !== 'function'){
+        throw new Error("Comperator given for heap is not a function");
+    }
+    this.comperator = comperator;
+    this.build();
+}
+
+
+/**
+ * This function bubbles down the element to its correct position in O(log n)
+ * It assumes that left and right child of binary heap are themselves heap structure.
+ * @param {number} index Heap arrays index of the element
+ */
+Heap.prototype.bubbleDown = function(index){
+    while(index < this.size){
+        let highest = this.heap[index];
+        let ind = index;
+        if(2*ind+1 < this.size && this.comperator(highest, this.heap[2*ind+1]) ){
+            ind = 2*ind+1;
+            highest = this.heap[ind];
+        }
+        if(2*ind+2 < this.size && this.comperator(highest, this.heap[2*ind+2]) ){
+            ind = 2*ind+2;
+            highest = this.heap[ind];
+        }
+        highest = this.heap[ind];
+        this.heap[ind] = this.heap[index];
+        this.heap[index] = highest;
+        if(Math.abs(ind- index) < 1e-9){
+            break;
+        }
+        index = ind;
+    }
+}
+/**
+ * This function bubbles up the element to its correct position in O(log n)
+ * It assumes that parent and above it are themselves heap structure.
+ * @param {number} index Heap arrays index of the element
+ */
+Heap.prototype.bubbleUp = function(index){
+    while(index > 0){
+        let highest = this.heap[index];
+        let ind = index;
+        if(!this.comperator(highest , this.heap[Math.floor((index-1)/2)])){
+            ind = Math.floor((index-1)/2);
+            highest = this.heap[ind];
+        }
+        highest = this.heap[ind];
+        this.heap[ind] = this.heap[index];
+        this.heap[index] = highest;
+        if(Math.abs(ind- index) < 1e-9){
+            break;
+        }
+        index = ind;
+    }
+}
+
+/**
+ * Returns Element with highest priority in O(log n)
+ * @returns {number} Popped Element
+ */
+Heap.prototype.pop = function (){
+    if(this.size ===0){
+        return null;
+    }
+    let temp = this.heap[this.size-1];
+    this.heap[this.size-1] = this.heap[0];
+    this.heap[0] = temp;
+    this.size--;
+    this.bubbleDown(0);
+    return this.heap.pop();
+}
+
+/**
+ * @returns {number} Element with highest priority in O(1)
+ */
+Heap.prototype.top = function(){
+    if(this.size==0){
+        return null;
+    }
+    return this.heap[0];
+}
+
+/**
+ * This function builds the heap array in O(n)
+ */
+Heap.prototype.build = function(){
+    if(this.heap && this.heap instanceof Array)
+    for(let i = Math.floor((this.size-2)/2); i>=0;i--){
+        this.bubbleDown(i);
+    }
+}
+
+/**
+ * This function pushes the element in the heap in O(log n).
+ * @param {any} element Element to be pushed
+ */
+Heap.prototype.push = function (element){
+    this.heap.push(element);
+    this.bubbleUp(this.size);
+    this.size = this.size+1;
+}
+
+/**
+ * checks whether heap is empty{true} or not{false};
+ * @returns {Boolean}
+ */
+Heap.prototype.empty = function(){
+    return this.heap.length===0;
+}
+
+module.exports = Heap;
+},{}],7:[function(require,module,exports){
 const Node = require('../../algorithms/graph/node.js');
 const Board = require('../../algorithms/graph/board.js');
 
@@ -629,4 +828,4 @@ document.addEventListener('DOMContentLoaded',()=>{
     b.init();
     window.b = b;
 });
-},{"../../algorithms/graph/board.js":2,"../../algorithms/graph/node.js":4}]},{},[5]);
+},{"../../algorithms/graph/board.js":2,"../../algorithms/graph/node.js":5}]},{},[7]);

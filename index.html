@@ -8,28 +8,60 @@
 </head>
 <body>
     <nav style="position: fixed; top: 0;left: 0; right: 0;">
-        <div id="logo"></div>
+        <img src="images/end.png"  style="float: left;"alt="">
         <div >
             <ul class='navItems'>
-                <li id = 'startAlgo_btn'>Run Algorithm</li>
                 <li id = 'clearPath_btn'>Clear Path</li>
+                <li id = 'clearBoard_btn'>Clear Board</li>
+                <li class= 'dropdown'>
+                    <button>Speed</button>
+                    <div class='dropdown-list'>
+                        <button class="dropdown-item" id = 'sp-fast'>Fast</button>
+                        <button class="dropdown-item" id = 'sp-med'>Medium</button>
+                        <button class="dropdown-item" id = 'sp-slow'>Slow</button>
+                    </div>
+                </li>
+                <li class= 'dropdown'>
+                    <button>Run Algorithm</button>
+                    <div class='dropdown-list'>
+                        <button class="dropdown-item" id = 'dijkstra'>Dijkstra</button>
+                        <button class="dropdown-item" id = 'aStar'>A*</button>
+                    </div>
+                </li>
                 <li class= 'dropdown' id = 'createMaze_btn'>
-                    <!-- <div class= "dropdown"> -->
                         <button>Create Maze</button>
                         <div class='dropdown-list'>
                             <button class="dropdown-item" id = 'maze-1'>Maze 1</button>
                             <button class="dropdown-item" id = 'maze-2'>Maze 2</button>
                         </div>
-                    <!-- </div> -->
                 </li>
             </ul>
         </div>
     </nav>
-    <!-- <div>
-        <button id ='startAlgo_btn'>Run Algorithm</button>
-        <button id ='clearPath_btn'>Clear Path</button>
-        <button id ='createMaze_btn'>Create Maze</button>
-    </div> -->
+    <div id= "label-div">
+        <ul>
+            <li>
+                <div id='label-start'><img src="images/start.png" alt="start Image"></div>
+                Start Node
+            </li>
+            <li>
+                <div id='label-end'><img src="images/end.png" alt="end Image"></div>
+                End Node
+            </li>
+            <li>
+                <div id='label-unvisited'></div>
+                Unvisited Node
+            </li>
+            <li>
+                <div id = 'label-visited'></div>
+                Visited Node
+            </li>
+            <li>
+                <div id='label-wall'></div>
+                Wall
+            </li>
+        </ul>
+    </div>
     <div class="maingrid">
         <table>
             <tbody id ="grid">

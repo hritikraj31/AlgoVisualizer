@@ -1,5 +1,6 @@
 const startAnimation = (board)=>{
     let nodes = board.nodesToAnimate;
+    let speed = board.speed;
     function timeout(index){
         setTimeout(()=>{
             if(index===nodes.length){
@@ -13,7 +14,7 @@ const startAnimation = (board)=>{
                     current.className = nodes[index].type;
                 timeout(index+1);
             }
-        },10);
+        },speed);
     }
     timeout(0);
 }
