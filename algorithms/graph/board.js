@@ -176,7 +176,7 @@ Board.prototype.changeNormalNode = function (currentNode){
     if(this.mouseDown && (currentNode.type !== 'start' && currentNode.type !== 'end')){
         currentNode.lastNodeType = currentNode.type;
         currentNode.type = (currentNode.type ==='wall')?'unvisited': 'wall';
-        nodeHtml.className = (currentNode.type ==='unvisited')?'unvisited':'wall';
+        nodeHtml.className = (currentNode.type ==='unvisited')?'instant-unvisited':'wall';
     }
 }
 

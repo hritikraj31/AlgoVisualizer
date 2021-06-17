@@ -22,6 +22,7 @@ const startAnimation = (board)=>{
 
 function animateShortestPath(board){
     let shortestPath = board.shortestPath;
+    let speed = board.speed;
     function timeout(index){
         setTimeout(()=>{
             if(index ===shortestPath.length){
@@ -34,7 +35,7 @@ function animateShortestPath(board){
                     current.className = 'path';
                 timeout(index+1);
             }
-        },10);
+        },speed);
     }
     timeout(0);
 }
@@ -236,7 +237,7 @@ Board.prototype.changeNormalNode = function (currentNode){
     if(this.mouseDown && (currentNode.type !== 'start' && currentNode.type !== 'end')){
         currentNode.lastNodeType = currentNode.type;
         currentNode.type = (currentNode.type ==='wall')?'unvisited': 'wall';
-        nodeHtml.className = (currentNode.type ==='unvisited')?'unvisited':'wall';
+        nodeHtml.className = (currentNode.type ==='unvisited')?'instant-unvisited':'wall';
     }
 }
 

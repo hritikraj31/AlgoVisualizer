@@ -8,9 +8,10 @@
 </head>
 <body>
     <nav style="position: fixed; top: 0;left: 0; right: 0;">
-        <img src="images/end.png"  style="float: left;"alt="">
+        <!-- <img src="images/end.png"  style="float: left;"alt=""> -->
         <div >
             <ul class='navItems'>
+                <li class='logo-txt'>AlgoVisualizer</li>
                 <li id = 'clearPath_btn'>Clear Path</li>
                 <li id = 'clearBoard_btn'>Clear Board</li>
                 <li class= 'dropdown'>
@@ -39,7 +40,7 @@
         </div>
     </nav>
     <div id= "label-div">
-        <ul>
+        <ul style="width: 100%;">
             <li>
                 <div id='label-start'><img src="images/start.png" alt="start Image"></div>
                 Start Node
@@ -59,6 +60,11 @@
             <li>
                 <div id='label-wall'></div>
                 Wall
+            </li>
+            <li style="float: right;">
+                <a href="https://github.com/hritikraj31/AlgoVisualizer" style="height: 30px;width: 30px; text-decoration: none;display: inline-block;">
+                    <img src="images/github_logo.png" alt="github_logo" style="height: 100%;width: 100%;">
+                </a>
             </li>
         </ul>
     </div>

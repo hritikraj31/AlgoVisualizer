@@ -21,6 +21,7 @@ const startAnimation = (board)=>{
 
 function animateShortestPath(board){
     let shortestPath = board.shortestPath;
+    let speed = board.speed;
     function timeout(index){
         setTimeout(()=>{
             if(index ===shortestPath.length){
@@ -33,7 +34,7 @@ function animateShortestPath(board){
                     current.className = 'path';
                 timeout(index+1);
             }
-        },10);
+        },speed);
     }
     timeout(0);
 }
