@@ -4,8 +4,14 @@
 	"description": "For visualising different algorithms.",
 	"main": "server.js",
 	"scripts": {
-		"start": "nodemon server.js",
+		"start": "node server.js",
+		"dev": "nodemon server.js",
+		"build": "browserify assets\\js\\main.js | uglifyjs -m > assets\\js\\bundle.js",
 		"watch": "watchify  assets\\js\\main.js -o assets\\js\\bundle.js"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/hritikraj31/AlgoVisualizer.git"
 	},
 	"keywords": [
 		"\"Visualize\"",
@@ -14,6 +20,11 @@
 	"author": "Hritik Raj",
 	"license": "ISC",
 	"dependencies": {
-		"express": "^4.17.1"
+		"browserify": "^17.0.0",
+		"express": "^4.17.1",
+		"uglify-js": "^3.13.9"
+	},
+	"devDependencies": {
+		"watchify": "^4.0.0"
 	}
 }

@@ -1,7 +1,7 @@
 AlgoVisualizer
 ===
 
-Visualize how algorithms Dijkstra and A* works in grid!
+[Visualize](https://algo-visualizer-1.herokuapp.com/) how algorithms Dijkstra and A* works in grid!
 
 # Features
 
@@ -22,3 +22,4 @@ For frontend only HTML and CSS has been used.
 
 # View Live App At
 
+https://algo-visualizer-1.herokuapp.com/
