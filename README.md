@@ -23,3 +23,7 @@ For frontend only HTML and CSS has been used.
 # View Live App At
 
 https://algo-visualizer-1.herokuapp.com/
+
+---
+
+<img src="algovisualizer_srnshot.png" width="1000" height="580" alt="Website Screenshot">
